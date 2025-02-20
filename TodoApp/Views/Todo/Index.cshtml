@@ -1,0 +1,165 @@
+﻿@model IEnumerable<TodoApp.Models.Todo>
+
+@{
+    ViewBag.Title = "Todos";
+}
+
+@{
+    var status = ViewBag.Status;
+    var showArchived = ViewBag.ShowArchived;
+}
+
+
+<div style="display: flex; justify-content: space-between; align-items: center; margin-top: 30px;">
+    <!-- Filter Section -->
+    <div style="display: flex; align-items: center;">
+        <label for="statusFilter" style="margin-right: 10px;">Filter:</label>
+        <select id="statusFilter" onchange="filterTodos()">
+            <option value="">All</option>
+            <option value="Waiting" @(ViewBag.Status == TodoApp.Models.TodoStatus.Waiting ? "selected" : "")>Waiting</option>
+            <option value="InProgress" @(ViewBag.Status == TodoApp.Models.TodoStatus.InProgress ? "selected" : "")>In Progress</option>
+            <option value="Completed" @(ViewBag.Status == TodoApp.Models.TodoStatus.Completed ? "selected" : "")>Completed</option>
+            <option value="Archived" @(ViewBag.ShowArchived ? "selected" : "")>Archived</option>
+        </select>
+    </div>
+
+    <!-- Create Task Button -->
+    <a href="@Url.Action("Create")" class="btn btn-primary">Create New Task</a>
+</div>
+
+<div class="todo-grid">
+    <!-- TODO grid -->
+    @foreach (var todo in Model)
+    {
+        <div class="todo-card">
+            <div class="todo-header">
+                <h3>Name: @todo.Name</h3>
+
+            </div>
+            <p>Description: @todo.Description</p>
+            <p>Due Date:@(todo.DueDate.HasValue ? todo.DueDate.Value.ToString("dd.MM.yyyy") : "-")</p>
+            <p>Status: @todo.Status</p>
+            @if (todo.IsArchived)
+            {
+                <p>Archived Task</p>
+            }
+            <div class="todo-actions">
+                @if (!todo.IsArchived)
+                {
+                    if (todo.Status == TodoApp.Models.TodoStatus.Waiting)
+                    {
+                        <a href="@Url.Action("Edit", "Todo", new { id = todo.Id })" class="btn btn-warning">✏️ Edit</a>
+                        <button class="btn btn-primary start-todo" data-id="@todo.Id">▶ Start</button>
+                        <button class="btn btn-success complete-todo" data-id="@todo.Id">✔ Complete</button>
+                        <button class="btn btn-secondary archive-todo" data-id="@todo.Id">📁 Archived</button>
+                        <button class="btn btn-danger delete-todo" data-id="@todo.Id">🗑 Delete</button>
+                    }
+                    else if (todo.Status == TodoApp.Models.TodoStatus.InProgress)
+                    {
+                        <a href="@Url.Action("Edit", "Todo", new { id = todo.Id })" class="btn btn-warning">✏️ Edit</a>
+                        <button class="btn btn-success complete-todo" data-id="@todo.Id">✔ Complete</button>
+                        <button class="btn btn-secondary archive-todo" data-id="@todo.Id">📁 Archived</button>
+                        <button class="btn btn-danger delete-todo" data-id="@todo.Id">🗑 Delete</button>
+                    }
+                    else if (todo.Status == TodoApp.Models.TodoStatus.Completed)
+                    {
+                        <button class="btn btn-secondary archive-todo" data-id="@todo.Id">📁 Archived</button>
+                        <button class="btn btn-danger delete-todo" data-id="@todo.Id">🗑 Delete</button>
+                    }
+                }
+                else
+                {
+                    <button class="btn btn-danger delete-todo" data-id="@todo.Id">🗑 Delete</button>
+                }
+            </div>
+        </div>
+    }
+</div>
+
+<script>
+    $(document).ready(function() {
+        // Button click event listeners
+        $(document).on('click', '.start-todo', function () {
+            var todoId = $(this).data('id');
+            $.ajax({
+                url: '@Url.Action("ChangeStatus", "Todo")',
+                type: 'POST',
+                data: { id: todoId, newStatus: 'InProgress' },
+                success: function (response) {
+                    if (response.success) {
+                        location.reload();
+                    }
+                },
+                error: function () {
+                    alert('Error while starting task.');
+                }
+            });
+        });
+
+        $(document).on('click', '.complete-todo', function () {
+            var todoId = $(this).data('id');
+            $.ajax({
+                url: '@Url.Action("ChangeStatus", "Todo")',
+                type: 'POST',
+                data: { id: todoId, newStatus: 'Completed' },
+                success: function (response) {
+                    if (response.success) {
+                        location.reload();
+                    }
+                },
+                error: function () {
+                    alert('Error while completing task.');
+                }
+            });
+        });
+
+        $(document).on('click', '.archive-todo', function () {
+            var todoId = $(this).data('id');
+            $.ajax({
+                url: '@Url.Action("Archive", "Todo")',
+                type: 'POST',
+                data: { id: todoId },
+                success: function () {
+                    location.reload();
+                },
+                error: function () {
+                    alert('Error while archiving task.');
+                }
+            });
+        });
+
+        $(document).on('click', '.delete-todo', function () {
+            var todoId = $(this).data('id');
+            if (confirm('Are you sure you want to delete this task?')) {
+                $.ajax({
+                    url: '@Url.Action("Delete", "Todo")',
+                    type: 'POST',
+                    data: { id: todoId },
+                    success: function () {
+                        location.reload();
+                    },
+                    error: function () {
+                        alert('Error while deleting task.');
+                    }
+                });
+            }
+        });
+    });
+    //filter todos
+    function filterTodos() {
+        var status = document.getElementById("statusFilter").value;
+        var url = '@Url.Action("Index", "Todo")';
+
+        if (status === "Archived") {
+            url += "?showArchived=true";
+        } else if (status) {
+            url += "?status=" + status;
+        }
+
+        window.location.href = url;
+    }
+</script>
+
+@section Scripts {
+    @Scripts.Render("~/bundles/jqueryval")
+}
